@@ -1,0 +1,10 @@
+[environment]
+# The oldest version the package supports. Checking against that catches
+# anything newer that slips in, here rather than on a user's machine.
+python-version = "3.10"
+
+[src]
+# Same reasoning as ruff: these two are upstream's, kept close to it. ty also
+# cannot see that qr_stop_event and qr_display_thread are created together, so
+# it reports a null dereference that cannot happen.
+exclude = ["src/mitid/core.py", "src/mitid/srp.py"]

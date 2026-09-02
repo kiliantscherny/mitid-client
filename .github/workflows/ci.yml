@@ -36,3 +36,15 @@ jobs:
         with:
           python-version: "3.13"
       - run: uvx ruff check
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
+      - run: uv sync --all-extras
+      # Pinned to match tox.toml. ty is pre-1.0 and moves quickly, so a
+      # floating version turns an unrelated push into a red build.
+      - run: uvx ty@0.0.37 check

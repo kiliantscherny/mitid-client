@@ -1,0 +1,21 @@
+env_list = ["py310", "py311", "py312", "py313", "py314", "lint", "typecheck"]
+
+[env_run_base]
+description = "Run the tests"
+dependency_groups = ["dev"]
+# The Textual screen is part of the library, so it gets exercised too.
+extras = ["textual"]
+commands = [["pytest"]]
+
+[env.lint]
+description = "Run the linter"
+skip_install = true
+deps = ["ruff>=0.15.0"]
+commands = [["ruff", "check", "."]]
+
+[env.typecheck]
+description = "Run the type checker"
+# Pinned: ty is pre-1.0 and moves quickly. Bump it deliberately and deal with
+# whatever it has newly learned to find, rather than being surprised in CI.
+deps = ["ty==0.0.37"]
+commands = [["ty", "check"]]

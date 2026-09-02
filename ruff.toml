@@ -1,0 +1,11 @@
+line-length = 90
+
+# core.py and srp.py are kept close to their upstream so that fixes there can
+# be dropped straight in. Linting or reformatting them to house style would
+# make every future diff against upstream unreadable.
+[lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+exclude = ["src/mitid/core.py", "src/mitid/srp.py"]
+
+[format]
+exclude = ["src/mitid/core.py", "src/mitid/srp.py"]

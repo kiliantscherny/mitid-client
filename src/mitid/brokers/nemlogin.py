@@ -247,7 +247,7 @@ def _hand_back(
 
         form = soup.find("form")
         fields = _form_fields(form)
-        if fields.keys() & {"SAMLResponse", "SAMLRequest"}:
+        if form is not None and fields.keys() & {"SAMLResponse", "SAMLRequest"}:
             action = urljoin(response.url, str(form.get("action", "")) or response.url)
             response = session.post(
                 action,

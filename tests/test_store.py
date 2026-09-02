@@ -96,7 +96,9 @@ def test_the_session_is_rebuilt_by_the_factory_it_was_given(tmp_path, monkeypatc
 
     store = CookieStore("testapp", session_factory=picky_session)
     store.save(_session_with(JSESSIONID="abc"))
-    session, _ = store.restore()
+    restored = store.restore()
+    assert restored is not None
+    session, _ = restored
     assert session.headers["User-Agent"] == "something a broker will accept"
 
 

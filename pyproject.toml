@@ -1,0 +1,27 @@
+[project]
+name = "mitid-client"
+version = "0.1.0"
+description = "Log in to Danish services with MitID, from Python"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "Kilian Tscherny" }]
+requires-python = ">=3.10"
+dependencies = [
+    "beautifulsoup4>=4.12",
+    "pycryptodome>=3.20",
+    "qrcode>=8.0",
+    "requests>=2.32",
+]
+
+[project.optional-dependencies]
+# mitid.ui.tui only. The console renderer and the protocol itself need nothing
+# beyond the four above, so a script that never draws a Textual screen does not
+# pay for one.
+textual = ["textual>=3.1"]
+
+[build-system]
+requires = ["uv_build>=0.9.26,<0.10.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "mitid"

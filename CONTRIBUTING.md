@@ -57,20 +57,21 @@ tests/                 everything that can be checked without a phone
 ```
 
 > [!IMPORTANT]
-> `core.py` and `srp.py` come from
-> [Hundter/MitID-BrowserClient](https://github.com/Hundter/MitID-BrowserClient)
-> and are kept deliberately close to it, so that upstream fixes can be dropped
-> straight in when MitID changes the protocol.
+> `core.py` and `srp.py` started as
+> [Hundter/MitID-BrowserClient](https://github.com/Hundter/MitID-BrowserClient),
+> which is where the protocol was worked out and which the licence credits.
+> They are this package's code now: formatted, linted and type checked like
+> everything else, and changed where there was a reason to.
 >
-> They are formatted, linted and type checked like everything else, and every
-> change made to them is listed at the top of each file. There is one `noqa`
-> between them, on the SRP group modulus, which is a 942-digit integer literal
-> that Python offers no way to split.
+> They are still the riskiest files here, for a different reason. Nothing in
+> them can be tested without a real MitID and a real phone, so a change that
+> looks obviously correct can break every login and no test will say so. Change
+> them when you have a reason, keep the change small, and say in the pull
+> request which service you ran it against and whether the login completed.
 >
-> Because they have been reformatted, a diff against upstream is no longer
-> readable directly. When MitID changes the protocol, diff upstream against
-> upstream and apply the change here by hand. Behavioural changes are worth
-> raising upstream too.
+> When MitID changes the protocol, fixing it is this repository's job. Upstream
+> is worth a look in case somebody got there first, but it is not something to
+> wait for or design around.
 
 ## Adding a broker
 

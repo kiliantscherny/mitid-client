@@ -1,13 +1,11 @@
 """SRP-6a plus the AES-GCM bits MitID's authenticators need.
 
-Vendored from Hundter/MitID-BrowserClient (MIT licence, (c) 2024 Hundter) -
-https://github.com/Hundter/MitID-BrowserClient. Kept close to the reference
-implementation on purpose, so that upstream fixes can be dropped straight in
-when MitID changes the protocol.
-
-Changed from upstream: imports sorted, `pad` and `unpad` written as functions
-rather than assigned lambdas, and the file formatted to this project's rules.
-None of it changes what anything does. The group modulus is untouched.
+Started as a copy from Hundter/MitID-BrowserClient (MIT licence, (c) 2024
+Hundter) - https://github.com/Hundter/MitID-BrowserClient. Tidied since, but
+only in ways that change nothing: sorted imports, `pad` and `unpad` as
+functions rather than assigned lambdas, and this project's formatting. The
+group modulus and the protocol arithmetic are untouched, and want to stay that
+way unless there is a very good reason.
 """
 
 import base64

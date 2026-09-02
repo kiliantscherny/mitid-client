@@ -1,21 +1,17 @@
 """A Python stand-in for the MitID JavaScript core client.
 
-Adapted from Hundter/MitID-BrowserClient (MIT licence, (c) 2024 Hundter) -
-https://github.com/Hundter/MitID-BrowserClient, and kept close to it so that
-upstream fixes can be dropped straight in.
+Started as an adaptation of Hundter/MitID-BrowserClient (MIT licence, (c) 2024
+Hundter) - https://github.com/Hundter/MitID-BrowserClient, which is where the
+protocol was worked out. It has since been changed to suit this package: the
+things the user needs to see (which service is asking, the QR frames, the code
+to type into the app) leave through callbacks rather than the logger, a client
+no longer shares one HTTP session with every other client, and the whole file
+is formatted and checked like the rest of the package. `git log` has the
+details.
 
-The protocol itself is untouched. What changed:
-
-  - everything the user needs to see (which service is asking, the QR frames,
-    the code to type into the app) leaves through callbacks instead of the
-    logger, so a CLI or TUI can render it however it likes
-  - `requests_session` defaults to None and builds a session per client, rather
-    than building one in the signature and sharing it between all of them
-  - the two places that stop the QR thread also check the stop event, which
-    was always set whenever the thread existed but did not say so
-  - formatted and linted to this project's rules, which reflowed most of the
-    file. No statement changed meaning: long messages are split with implicit
-    concatenation, which produces the same strings
+MitID changes its protocol from time to time and this breaks when it does.
+Fixing that is this repository's job. Upstream is worth a look when it happens,
+in case somebody got there first, but it is not a dependency.
 
 Nothing in here is tinglysning-specific: the core client is the same wherever
 MitID is used, and every broker - NemLog-in, Signicat, Nets - hands the browser

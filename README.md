@@ -162,8 +162,9 @@ covered. It can only be run against the real thing.
 
 ## Credits and licence
 
-`mitid/core.py` and `mitid/srp.py` are adapted from
+The protocol here was worked out by
 [Hundter/MitID-BrowserClient](https://github.com/Hundter/MitID-BrowserClient),
-MIT-licensed, © 2024 Hundter.
+MIT-licensed, © 2024 Hundter. `mitid/core.py` and `mitid/srp.py` started as
+that code and have been changed since.
 
 MIT. See `LICENSE`.

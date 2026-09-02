@@ -33,7 +33,8 @@ def test_reads_it_out_of_bytes_too():
 
 
 def test_falls_back_to_what_it_logs():
-    assert _explain(Exception(json.dumps({"message": "user_not_found"}))) == "user_not_found"
+    logged = json.dumps({"message": "user_not_found"})
+    assert _explain(Exception(logged)) == "user_not_found"
     assert _explain(Exception(json.dumps({"errorCode": "AUTH-014"}))) == "AUTH-014"
 
 

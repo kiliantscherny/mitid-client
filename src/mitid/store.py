@@ -136,6 +136,8 @@ class CookieStore:
             report["final_url"] = final.url
             report["final_status"] = final.status_code
             report["final_html"] = final.text
-        path.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
+        path.write_text(
+            json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
         path.chmod(stat.S_IRUSR | stat.S_IWUSR)
         return path

@@ -34,6 +34,16 @@ dev = [
     "textual>=3.1",
 ]
 
+[tool.ruff]
+line-length = 90
+# core.py and srp.py are kept close to their upstream so that fixes there can be
+# dropped straight in. Reformatting them to house style would make every future
+# diff against upstream unreadable.
+extend-exclude = ["src/mitid/core.py", "src/mitid/srp.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--tb=short -q"

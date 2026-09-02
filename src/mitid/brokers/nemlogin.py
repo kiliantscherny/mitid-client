@@ -261,7 +261,12 @@ def _hand_back(
                 timeout=60,
             )
             response.raise_for_status()
-            _record(trace, f"submitted a SAML form to {urlparse(action).netloc}", response, session)
+            _record(
+                trace,
+                f"submitted a SAML form to {urlparse(action).netloc}",
+                response,
+                session,
+            )
             continue
 
         if urlparse(response.url).netloc.endswith(urlparse(NEMLOGIN).netloc):
@@ -291,7 +296,10 @@ def _choose_identity(
         link = box.find("a")
         if link is not None and link.get("data-loginoptions"):
             options.append(
-                (label.get_text(strip=True) if label else "?", str(link["data-loginoptions"]))
+                (
+                    label.get_text(strip=True) if label else "?",
+                    str(link["data-loginoptions"]),
+                )
             )
 
     if len(options) == 1:
@@ -337,7 +345,8 @@ def _form_fields(form) -> dict[str, str]:
         name = field.get("name")
         if not name:
             continue
-        if str(field.get("type", "")).lower() in ("checkbox", "radio") and not field.has_attr("checked"):
+        kind = str(field.get("type", "")).lower()
+        if kind in ("checkbox", "radio") and not field.has_attr("checked"):
             continue
         fields[str(name)] = str(field.get("value", ""))
     return fields

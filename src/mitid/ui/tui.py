@@ -58,10 +58,12 @@ def qr_text(matrix: list[list[bool]], quiet_zone: int = QUIET_ZONE) -> Text:
         rows.append(blank)
 
     rendered = Text(no_wrap=True)
-    for index, (top, bottom) in enumerate(zip(rows[::2], rows[1::2])):
+    # strict: the padding above makes the count even, and every row is the
+    # same width. A QR drawn from mismatched halves is not worth rendering.
+    for index, (top, bottom) in enumerate(zip(rows[::2], rows[1::2], strict=True)):
         if index:
             rendered.append("\n")
-        for dark_top, dark_bottom in zip(top, bottom):
+        for dark_top, dark_bottom in zip(top, bottom, strict=True):
             style = f"{DARK if dark_top else LIGHT} on {DARK if dark_bottom else LIGHT}"
             rendered.append(UPPER_HALF, style=style)
     return rendered

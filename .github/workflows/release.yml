@@ -1,0 +1,84 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
+
+      # A tag that disagrees with pyproject.toml publishes the wrong version
+      # under the right name, and PyPI does not let you take that back.
+      - name: Check the tag against the version
+        run: |
+          tagged="${GITHUB_REF_NAME#v}"
+          declared="$(uv version --short)"
+          if [ "$tagged" != "$declared" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match version $declared in pyproject.toml"
+            exit 1
+          fi
+
+      - run: uv sync --all-extras
+      - run: uv run pytest
+      - run: uv build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    # Named on the PyPI side as part of the trusted publisher, so a workflow
+    # from anywhere else cannot publish under this project's name.
+    environment:
+      name: pypi
+      url: https://pypi.org/p/mitid-client
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      # No API token anywhere: this exchanges a short-lived OIDC identity for
+      # an upload token, and signs the artefacts while it is at it.
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  github-release:
+    # Only once PyPI has it. A GitHub release for a version nobody can install
+    # is worse than no release at all.
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Take the notes from the changelog
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v ver="$version" '
+            /^## / { if (found) exit; if (index($0, ver)) { found = 1; next } }
+            found { print }
+          ' CHANGELOG.md > release_notes.md
+          [ -s release_notes.md ] || echo "See CHANGELOG.md." > release_notes.md
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file release_notes.md

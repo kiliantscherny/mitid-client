@@ -113,12 +113,14 @@ def _render(matrix: list[list[bool]]) -> list[str]:
         rows.append(blank)
 
     lines = []
-    for top, bottom in zip(rows[::2], rows[1::2]):
+    # strict: the padding above makes the count even, and every row is the
+    # same width. A QR drawn from mismatched halves is not worth rendering.
+    for top, bottom in zip(rows[::2], rows[1::2], strict=True):
         cells = [
             (DARK_FG if dark_top else LIGHT_FG)
             + (DARK_BG if dark_bottom else LIGHT_BG)
             + UPPER_HALF
-            for dark_top, dark_bottom in zip(top, bottom)
+            for dark_top, dark_bottom in zip(top, bottom, strict=True)
         ]
         lines.append("  " + "".join(cells) + RESET)
     return lines

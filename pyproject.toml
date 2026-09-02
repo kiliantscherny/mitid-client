@@ -5,6 +5,14 @@ description = "Log in to Danish services with MitID, from Python"
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [{ name = "Kilian Tscherny" }]
+keywords = ["mitid", "nemlogin", "denmark", "authentication"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Topic :: System :: Systems Administration :: Authentication/Directory",
+]
 requires-python = ">=3.10"
 dependencies = [
     "beautifulsoup4>=4.12",
@@ -18,6 +26,17 @@ dependencies = [
 # beyond the four above, so a script that never draws a Textual screen does not
 # pay for one.
 textual = ["textual>=3.1"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    # mitid.ui.tui is part of the library, so the tests need what it needs.
+    "textual>=3.1",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--tb=short -q"
 
 [build-system]
 requires = ["uv_build>=0.9.26,<0.10.0"]

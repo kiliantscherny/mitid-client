@@ -1,0 +1,21 @@
+# This library logs people in. Anything it produces while being worked on -
+# a cached session, a failed login's hop-by-hop trace - names a real person
+# and is a live credential besides. Those normally land in $XDG_CONFIG_HOME,
+# but a run started from here could drop one in the working directory, so the
+# rule is blunt: no data file, anywhere in the tree, ever gets committed.
+*.json
+*.txt
+*.har
+*-session*
+*-login-report*
+
+# ...except what the tests are built on, which is invented.
+!tests/**
+
+# Python
+__pycache__/
+.venv/
+.pytest_cache/
+.ruff_cache/
+dist/
+*.egg-info/

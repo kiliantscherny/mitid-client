@@ -96,6 +96,41 @@ uv add mitid-client              # or: pip install mitid-client
 uv add "mitid-client[textual]"   # if you want the Textual screen
 ```
 
+Not on PyPI yet. Until it is, depend on it by path or by git:
+
+```toml
+[tool.uv.sources]
+mitid-client = { path = "../mitid-client", editable = true }
+# or
+mitid-client = { git = "https://github.com/kiliantscherny/mitid-client.git" }
+```
+
+## Known to work against
+
+Two brokers, in two applications, which is the whole reason this is a library
+rather than a file copied between them:
+
+| service | broker | what it is used for |
+| --- | --- | --- |
+| tinglysning.dk | NemLog-in | [yaybo](https://github.com/kiliantscherny/yaybo) — the Danish land register |
+| nordnet.dk | Signicat | [nordpy](https://github.com/kiliantscherny/nordpy) — portfolio data |
+
+`mitid.brokers.nemlogin` covers the first shape and is reusable as it stands:
+point it at any NemLog-in-protected URL. The second shape does its own dance to
+get an `aux` blob and then calls `mitid.authenticate` with it, which is the part
+every service has in common.
+
+## Tests
+
+```sh
+uv run pytest
+```
+
+Everything that can be tested without a phone is: the cookie store's round trip
+and file mode, both QR renderers' shape and polarity, and the unwrapping of
+MitID's error responses. The protocol itself is not - it can only be exercised
+against the real thing.
+
 ## Credits and licence
 
 `mitid/core.py` and `mitid/srp.py` are adapted from

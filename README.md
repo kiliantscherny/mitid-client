@@ -2,6 +2,21 @@
 
 Log in to Danish services with MitID, from Python. No browser, no Selenium.
 
+---
+
+> [!CAUTION]
+> **This is a hobby project. It is not built for production use, and nothing
+> about it is supported.**
+>
+> It is not affiliated with, endorsed by, or connected to MitID,
+> NemLog-in, Digitaliseringsstyrelsen, Nets, Signicat, or any service that
+> authenticates through them. Those names appear here only to say what this
+> talks to.
+>
+> Provided as-is, with no warranty of any kind. **Use it at your own risk.** The
+> author accepts no liability for any loss, damage, lockout, or misuse arising
+> from it.
+
 Every MitID-protected site works the same way. An identity broker hands the
 browser an `aux` blob, the browser feeds that to MitID's JavaScript core client,
 and the core client hands back an authorisation code the broker exchanges for a
@@ -19,15 +34,15 @@ final = nemlogin.log_in(session, "https://www.tinglysning.dk/...", "MyMitIDUserI
 
 ## What is in it
 
-| module | what it does |
-| --- | --- |
-| `mitid.authenticate` | an `aux` blob and a user ID in, an authorisation code out |
-| `mitid.core` | the core client: SRP, the app channel, the QR frames, polling |
-| `mitid.srp` | SRP-6a and the AES-GCM bits the authenticators need |
-| `mitid.brokers.nemlogin` | NemLog-in, which fronts the whole Danish public sector |
-| `mitid.store` | keeps a login's cookies between runs, 0600, in `$XDG_CONFIG_HOME` |
-| `mitid.ui.console` | status lines, a scannable QR and a code box, on stderr |
-| `mitid.ui.tui` | the same login as a Textual screen (`[textual]` extra) |
+| module                   | what it does                                                      |
+| ------------------------ | ----------------------------------------------------------------- |
+| `mitid.authenticate`     | an `aux` blob and a user ID in, an authorisation code out         |
+| `mitid.core`             | the core client: SRP, the app channel, the QR frames, polling     |
+| `mitid.srp`              | SRP-6a and the AES-GCM bits the authenticators need               |
+| `mitid.brokers.nemlogin` | NemLog-in, which fronts the whole Danish public sector            |
+| `mitid.store`            | keeps a login's cookies between runs, 0600, in `$XDG_CONFIG_HOME` |
+| `mitid.ui.console`       | status lines, a scannable QR and a code box, on stderr            |
+| `mitid.ui.tui`           | the same login as a Textual screen (`[textual]` extra)            |
 
 The protocol reports everything through callbacks — `on_status`, `on_qr`,
 `on_otp`, `ask_token_code`, `choose_identity` — and draws nothing itself. That
@@ -110,10 +125,10 @@ mitid-client = { git = "https://github.com/kiliantscherny/mitid-client.git" }
 Two brokers, in two applications, which is the whole reason this is a library
 rather than a file copied between them:
 
-| service | broker | what it is used for |
-| --- | --- | --- |
-| tinglysning.dk | NemLog-in | [yaybo](https://github.com/kiliantscherny/yaybo) — the Danish land register |
-| nordnet.dk | Signicat | [nordpy](https://github.com/kiliantscherny/nordpy) — portfolio data |
+| service        | broker    |
+| -------------- | --------- |
+| tinglysning.dk | NemLog-in |
+| nordnet.dk     | Signicat  |
 
 `mitid.brokers.nemlogin` covers the first shape and is reusable as it stands:
 point it at any NemLog-in-protected URL. The second shape does its own dance to
@@ -135,14 +150,30 @@ against the real thing.
 
 `mitid/core.py` and `mitid/srp.py` are adapted from
 [Hundter/MitID-BrowserClient](https://github.com/Hundter/MitID-BrowserClient),
-MIT-licensed, © 2024 Hundter. The protocol is left as it is upstream so that
-fixes can be dropped straight in when MitID changes it; the only edit is that
-what the user needs to see leaves through callbacks instead of the logger.
+MIT-licensed, © 2024 Hundter.
 
 MIT. See `LICENSE`.
 
-## Please be sensible
+## What you are taking on
 
-This logs in as you, to services that hold real data about real people, using a
-national identity system. Use it for your own accounts and your own data. Rate
-limits, terms of service and the law all still apply.
+> [!WARNING]
+> This logs in **as you**, with a national electronic identity, over a protocol
+> that is not a published API — it is reverse-engineered from what a browser
+> does. The consequences of that are real, and they are yours:
+>
+> - MitID can rate-limit an account, and **temporarily block one**, after
+>   repeated failed authentications. A login flow that is wrong in a loop is a
+>   good way to find that out.
+> - The protocol can change without notice, and when it does this stops
+>   working — possibly halfway through a login.
+> - Every service you point this at has terms of service, and they apply to
+>   you. So does the law.
+> - A saved session is a **live credential**. `CookieStore` writes it `0600` in
+>   your config directory; where it goes after that is your problem.
+
+> [!IMPORTANT]
+> None of this has been security-audited, and it is not a security product. It
+> handles credentials, tokens and cookies on a best-effort basis. Do not put it
+> anywhere that anybody else's identity depends on it.
+
+Use it for your own accounts and your own data.

@@ -59,9 +59,15 @@ tests/                 everything that can be checked without a phone
 > `core.py` and `srp.py` come from
 > [Hundter/MitID-BrowserClient](https://github.com/Hundter/MitID-BrowserClient)
 > and are kept deliberately close to it, so that upstream fixes can be dropped
-> straight in when MitID changes the protocol. They are excluded from ruff and
-> ty for that reason. Please don't reformat them or refactor them to house
-> style. Behavioural changes there are worth raising upstream too.
+> straight in when MitID changes the protocol.
+>
+> They are linted and type checked like everything else, and every change made
+> to them is listed at the top of each file. Line length is the one rule they
+> are exempt from, because rewrapping protocol code makes future diffs against
+> upstream unreadable and buys nothing.
+>
+> Please keep them recognisable: no reformatting, no refactoring to house
+> style. A behavioural change there is worth raising upstream too.
 
 ## Adding a broker
 

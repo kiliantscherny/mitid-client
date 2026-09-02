@@ -1,21 +1,33 @@
 """SRP-6a plus the AES-GCM bits MitID's authenticators need.
 
-Vendored verbatim from Hundter/MitID-BrowserClient (MIT licence, (c) 2024
-Hundter) - https://github.com/Hundter/MitID-BrowserClient. Left untouched on
-purpose: it mirrors the reference implementation, so upstream fixes can be
-dropped straight in when MitID changes the protocol.
+Vendored from Hundter/MitID-BrowserClient (MIT licence, (c) 2024 Hundter) -
+https://github.com/Hundter/MitID-BrowserClient. Kept close to the reference
+implementation on purpose, so that upstream fixes can be dropped straight in
+when MitID changes the protocol.
+
+Changed from upstream: imports sorted, and `pad` and `unpad` written as
+functions rather than assigned lambdas. Neither changes what they do.
 """
 
 import base64
-import secrets
 import binascii
 import hashlib
-from Crypto.Cipher import AES
+import secrets
+
 from Crypto import Random
+from Crypto.Cipher import AES
 
 BLOCK_SIZE = 16
-pad = lambda s: s + (BLOCK_SIZE - len(s) % BLOCK_SIZE) * chr(BLOCK_SIZE - len(s) % BLOCK_SIZE)
-unpad = lambda s: s[:-ord(s[len(s) - 1:])]
+
+
+def pad(s):
+    return s + (BLOCK_SIZE - len(s) % BLOCK_SIZE) * chr(BLOCK_SIZE - len(s) % BLOCK_SIZE)
+
+
+def unpad(s):
+    return s[:-ord(s[len(s) - 1:])]
+
+
 
 def int_to_hex(x):
     return format(x, 'x')
@@ -46,7 +58,7 @@ def AesDecryptWithKey(encMessage, key):
     decrypted = cipher.decrypt_and_verify(cipherText, macTag)
     return decrypted
 
-class CustomSRP():
+class CustomSRP:
     def SRPStage1(self):
         self.N = 4983313092069490398852700692508795473567251422586244806694940877242664573189903192937797446992068818099986958054998012331720869136296780936009508700487789962429161515853541556719593346959929531150706457338429058926505817847524855862259333438239756474464759974189984231409170758360686392625635632084395639143229889862041528635906990913087245817959460948345336333086784608823084788906689865566621015175424691535711520273786261989851360868669067101108956159530739641990220546209432953829448997561743719584980402874346226230488627145977608389858706391858138200618631385210304429902847702141587470513336905449351327122086464725143970313054358650488241167131544692349123381333204515637608656643608393788598011108539679620836313915590459891513992208387515629240292926570894321165482608544030173975452781623791805196546326996790536207359143527182077625412731080411108775183565594553871817639221414953634530830290393130518228654795859
         self.g = 2

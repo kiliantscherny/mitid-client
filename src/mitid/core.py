@@ -1,33 +1,55 @@
 """A Python stand-in for the MitID JavaScript core client.
 
 Adapted from Hundter/MitID-BrowserClient (MIT licence, (c) 2024 Hundter) -
-https://github.com/Hundter/MitID-BrowserClient. The protocol is untouched; the
-only change is that everything the user needs to see (which service is asking,
-the QR frames, the code to type into the app) leaves through callbacks instead
-of the logger, so a CLI or TUI can render it however it likes.
+https://github.com/Hundter/MitID-BrowserClient, and kept close to it so that
+upstream fixes can be dropped straight in.
+
+The protocol itself is untouched. What changed:
+
+  - everything the user needs to see (which service is asking, the QR frames,
+    the code to type into the app) leaves through callbacks instead of the
+    logger, so a CLI or TUI can render it however it likes
+  - `requests_session` defaults to None and builds a session per client, rather
+    than building one in the signature and sharing it between all of them
+  - the two places that stop the QR thread also check the stop event, which
+    was always set whenever the thread existed but did not say so
 
 Nothing in here is tinglysning-specific: the core client is the same wherever
 MitID is used, and every broker - NemLog-in, Signicat, Nets - hands the browser
 the same `aux` blob to feed it.
 """
 
-import requests
-import time
-import hashlib
 import base64
+import hashlib
 import hmac
-import logging
-import qrcode
-import threading
 import json
-from mitid.srp import CustomSRP, hex_to_bytes, bytes_to_hex, pad
+import logging
+import threading
+import time
+
+import qrcode
+import requests
+
+from mitid.srp import CustomSRP, bytes_to_hex, hex_to_bytes, pad
 
 logger = logging.getLogger(__name__)
 
-class BrowserClient():
-    def __init__(self, client_hash: str, authentication_session_id: str, requests_session = requests.Session(), on_qr_display=None, on_status=None, on_otp=None):
+class BrowserClient:
+    def __init__(
+        self,
+        client_hash: str,
+        authentication_session_id: str,
+        requests_session=None,
+        on_qr_display=None,
+        on_status=None,
+        on_otp=None,
+    ):
         self.qr_display_thread_lock = threading.Lock()
-        self.session = requests_session
+        # Upstream defaults this to `requests.Session()` in the signature, which
+        # builds one session at import time and shares it between every client
+        # made without an explicit one. Every caller here passes a session, so
+        # this only ever mattered latently, but it is still wrong.
+        self.session = requests_session if requests_session is not None else requests.Session()
         self.on_qr_display = on_qr_display
         self.on_status = on_status or (lambda message: logger.info(message))
         self.on_otp = on_otp or (lambda code: logger.info("Type this code in the app: %s", code))
@@ -53,7 +75,7 @@ class BrowserClient():
     def __display_qr_ascii(self, stop_event):
         def render_qr(qr):
             matrix = qr.get_matrix()
-            return "\n".join("".join(("  " if cell else "\u2588\u2588" for cell in row)) for row in matrix)
+            return "\n".join("".join("  " if cell else "\u2588\u2588" for cell in row) for row in matrix)
 
         frame = True
         while not stop_event.is_set():
@@ -136,10 +158,10 @@ class BrowserClient():
 
     def __create_flow_value_proof(self):
         hashed_broker_security_context = hashlib.sha256(self.broker_security_context.encode("utf8")).hexdigest()
-        base64_reference_text_header = base64.b64encode((self.reference_text_header.encode('utf8'))).decode("ascii")
-        base64_reference_text_body = base64.b64encode((self.reference_text_body.encode('utf8'))).decode("ascii")
-        base64_service_provider_name = base64.b64encode((self.service_provider_name.encode('utf8'))).decode("ascii")
-        return f"{self.current_authenticator_session_id},{self.current_authenticator_session_flow_key},{self.client_hash},{self.current_authenticator_eafe_hash},{hashed_broker_security_context},{base64_reference_text_header},{base64_reference_text_body},{base64_service_provider_name}".encode("utf-8")
+        base64_reference_text_header = base64.b64encode(self.reference_text_header.encode('utf8')).decode("ascii")
+        base64_reference_text_body = base64.b64encode(self.reference_text_body.encode('utf8')).decode("ascii")
+        base64_service_provider_name = base64.b64encode(self.service_provider_name.encode('utf8')).decode("ascii")
+        return f"{self.current_authenticator_session_id},{self.current_authenticator_session_flow_key},{self.client_hash},{self.current_authenticator_eafe_hash},{hashed_broker_security_context},{base64_reference_text_header},{base64_reference_text_body},{base64_service_provider_name}".encode()
 
     def __select_authenticator(self, authenticator_type: str):
         if authenticator_type == self.current_authenticator_type:
@@ -354,14 +376,25 @@ class BrowserClient():
                 continue
 
             if r.status_code == 200 and r.json()["status"] == "channel_verified":
-                if qr_display_thread and qr_display_thread.is_alive():
+                # The event and the thread are created together above, so one
+                # implies the other. Saying so keeps the invariant visible to a
+                # reader and to a type checker, instead of only to whoever
+                # wrote it.
+                if qr_stop_event and qr_display_thread and qr_display_thread.is_alive():
                     qr_stop_event.set()
                     qr_display_thread.join()
                 self.on_status("Code accepted - now approve the login in the app")
                 continue
 
-            if not (r.status_code == 200 and r.json()["status"] == "OK" and r.json()["confirmation"] == True):
-                if qr_display_thread and qr_display_thread.is_alive():
+            # `== True` rather than a truth check, deliberately: this is a field
+            # from someone else's JSON, and a truthy string or 1 would pass a
+            # truth check while not being the confirmation we are waiting for.
+            if not (r.status_code == 200 and r.json()["status"] == "OK" and r.json()["confirmation"] == True):  # noqa: E712
+                # The event and the thread are created together above, so one
+                # implies the other. Saying so keeps the invariant visible to a
+                # reader and to a type checker, instead of only to whoever
+                # wrote it.
+                if qr_stop_event and qr_display_thread and qr_display_thread.is_alive():
                     qr_stop_event.set()
                     qr_display_thread.join()
                 self.on_status("Login request was not accepted")

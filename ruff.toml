@@ -1,11 +1,14 @@
 line-length = 90
 
-# core.py and srp.py are kept close to their upstream so that fixes there can
-# be dropped straight in. Linting or reformatting them to house style would
-# make every future diff against upstream unreadable.
 [lint]
 select = ["E", "F", "W", "I", "UP", "B"]
-exclude = ["src/mitid/core.py", "src/mitid/srp.py"]
 
-[format]
-exclude = ["src/mitid/core.py", "src/mitid/srp.py"]
+# core.py and srp.py come from upstream and are kept close to it, so that its
+# fixes can be dropped straight in when MitID changes the protocol. Every rule
+# about how the code behaves applies to them; the one about how long its lines
+# are does not. Rewrapping ~70 lines of protocol code would make future diffs
+# against upstream unreadable and buy nothing, and one of them is a 942-digit
+# prime that cannot be wrapped at all.
+[lint.per-file-ignores]
+"src/mitid/core.py" = ["E501"]
+"src/mitid/srp.py" = ["E501"]

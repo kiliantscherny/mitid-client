@@ -5,8 +5,9 @@ https://github.com/Hundter/MitID-BrowserClient. Kept close to the reference
 implementation on purpose, so that upstream fixes can be dropped straight in
 when MitID changes the protocol.
 
-Changed from upstream: imports sorted, and `pad` and `unpad` written as
-functions rather than assigned lambdas. Neither changes what they do.
+Changed from upstream: imports sorted, `pad` and `unpad` written as functions
+rather than assigned lambdas, and the file formatted to this project's rules.
+None of it changes what anything does. The group modulus is untouched.
 """
 
 import base64
@@ -25,42 +26,50 @@ def pad(s):
 
 
 def unpad(s):
-    return s[:-ord(s[len(s) - 1:])]
-
+    return s[: -ord(s[len(s) - 1 :])]
 
 
 def int_to_hex(x):
-    return format(x, 'x')
+    return format(x, "x")
+
 
 def int_to_bytes(x):
-    return x.to_bytes((x.bit_length() + 7) // 8, 'big')
+    return x.to_bytes((x.bit_length() + 7) // 8, "big")
+
 
 def bytes_to_int(x):
-    return int.from_bytes(x, 'big')
+    return int.from_bytes(x, "big")
+
 
 def bytes_to_hex(x):
-    return binascii.hexlify(x).decode('utf-8')
+    return binascii.hexlify(x).decode("utf-8")
+
 
 def hex_to_bytes(x):
     return binascii.unhexlify(x)
 
+
 def hex_to_int(x):
     return int(x, 16)
+
 
 def AesDecryptWithKey(encMessage, key):
     encMessage = base64.b64decode(encMessage)
 
     iv = encMessage[:BLOCK_SIZE]
-    cipherText = encMessage[BLOCK_SIZE:len(encMessage)-BLOCK_SIZE]
-    macTag = encMessage[len(encMessage)-BLOCK_SIZE:]
+    cipherText = encMessage[BLOCK_SIZE : len(encMessage) - BLOCK_SIZE]
+    macTag = encMessage[len(encMessage) - BLOCK_SIZE :]
 
     cipher = AES.new(key, AES.MODE_GCM, iv)
     decrypted = cipher.decrypt_and_verify(cipherText, macTag)
     return decrypted
 
+
 class CustomSRP:
     def SRPStage1(self):
-        self.N = 4983313092069490398852700692508795473567251422586244806694940877242664573189903192937797446992068818099986958054998012331720869136296780936009508700487789962429161515853541556719593346959929531150706457338429058926505817847524855862259333438239756474464759974189984231409170758360686392625635632084395639143229889862041528635906990913087245817959460948345336333086784608823084788906689865566621015175424691535711520273786261989851360868669067101108956159530739641990220546209432953829448997561743719584980402874346226230488627145977608389858706391858138200618631385210304429902847702141587470513336905449351327122086464725143970313054358650488241167131544692349123381333204515637608656643608393788598011108539679620836313915590459891513992208387515629240292926570894321165482608544030173975452781623791805196546326996790536207359143527182077625412731080411108775183565594553871817639221414953634530830290393130518228654795859
+        # A 942-digit integer literal, and Python offers no way to split one
+        # across lines. It is the SRP group's modulus and has to stay exact.
+        self.N = 4983313092069490398852700692508795473567251422586244806694940877242664573189903192937797446992068818099986958054998012331720869136296780936009508700487789962429161515853541556719593346959929531150706457338429058926505817847524855862259333438239756474464759974189984231409170758360686392625635632084395639143229889862041528635906990913087245817959460948345336333086784608823084788906689865566621015175424691535711520273786261989851360868669067101108956159530739641990220546209432953829448997561743719584980402874346226230488627145977608389858706391858138200618631385210304429902847702141587470513336905449351327122086464725143970313054358650488241167131544692349123381333204515637608656643608393788598011108539679620836313915590459891513992208387515629240292926570894321165482608544030173975452781623791805196546326996790536207359143527182077625412731080411108775183565594553871817639221414953634530830290393130518228654795859  # noqa: E501
         self.g = 2
         a = secrets.randbits(256)
         if a < 0:
@@ -78,7 +87,7 @@ class CustomSRP:
         g_bytes = (b"\0" * (len(N_bytes) - len(g_bytes))) + g_bytes
 
         m = hashlib.sha256()
-        m.update(str(self.N).encode('utf-8') + g_bytes)
+        m.update(str(self.N).encode("utf-8") + g_bytes)
         digest = m.hexdigest()
 
         return hex_to_int(digest)
@@ -89,10 +98,10 @@ class CustomSRP:
         B_bytes = int_to_bytes(self.B)
 
         # Prepend A_bytes with |N_bytes|-|A_bytes| of 0
-        A_bytes = (b"\0"*(N_length-len(A_bytes)))+A_bytes
+        A_bytes = (b"\0" * (N_length - len(A_bytes))) + A_bytes
 
         # Prepend r_bytes with |N_bytes|-|r_bytes| of 0
-        B_bytes = (b"\0"*(N_length-len(B_bytes)))+B_bytes
+        B_bytes = (b"\0" * (N_length - len(B_bytes))) + B_bytes
 
         m = hashlib.sha256()
         m.update(A_bytes + B_bytes)
@@ -104,7 +113,7 @@ class CustomSRP:
         u = self.computeU()
         # The MitID app does not seem to perform this safety check
         # but at least some other implementations do
-        #if u == 0:
+        # if u == 0:
         #    return None
 
         s = self.computeLittleS()
@@ -127,13 +136,22 @@ class CustomSRP:
         a = N ^ g
 
         m = hashlib.sha256()
-        m.update((str(a) + r + srpSalt + str(self.A) + str(self.B) + bytes_to_hex(self.K_bits)).encode("ascii"))
+        m.update(
+            (
+                str(a)
+                + r
+                + srpSalt
+                + str(self.A)
+                + str(self.B)
+                + bytes_to_hex(self.K_bits)
+            ).encode("ascii")
+        )
         return m.hexdigest()
 
     def SRPStage3(self, srpSalt, randomB, password, auth_session_id):
         self.B = hex_to_int(randomB)
 
-        if(self.B == 0 or self.B % self.N == 0):
+        if self.B == 0 or self.B % self.N == 0:
             raise Exception("randomB did not pass safety check")
 
         m = hashlib.sha256()
@@ -160,7 +178,9 @@ class CustomSRP:
         M1_bigInt = int(self.M1_hex, 16)
 
         m = hashlib.sha256()
-        m.update((str(self.A) + str(M1_bigInt) + bytes_to_hex(self.K_bits)).encode('utf-8'))
+        m.update(
+            (str(self.A) + str(M1_bigInt) + bytes_to_hex(self.K_bits)).encode("utf-8")
+        )
         M2_hex_verify = m.hexdigest()
         return M2_hex_verify == M2_hex
 
@@ -168,7 +188,7 @@ class CustomSRP:
         iv = Random.new().read(BLOCK_SIZE)
         cipher = AES.new(self.K_bits, AES.MODE_GCM, iv)
         ciphertext, tag = cipher.encrypt_and_digest(plainText)
-        return (iv + ciphertext + tag)
+        return iv + ciphertext + tag
 
     def AuthDec(self, encMessage):
         return AesDecryptWithKey(encMessage, self.K_bits)

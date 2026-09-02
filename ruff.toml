@@ -2,13 +2,3 @@ line-length = 90
 
 [lint]
 select = ["E", "F", "W", "I", "UP", "B"]
-
-# core.py and srp.py come from upstream and are kept close to it, so that its
-# fixes can be dropped straight in when MitID changes the protocol. Every rule
-# about how the code behaves applies to them; the one about how long its lines
-# are does not. Rewrapping ~70 lines of protocol code would make future diffs
-# against upstream unreadable and buy nothing, and one of them is a 942-digit
-# prime that cannot be wrapped at all.
-[lint.per-file-ignores]
-"src/mitid/core.py" = ["E501"]
-"src/mitid/srp.py" = ["E501"]

@@ -8,10 +8,13 @@ extras = ["textual"]
 commands = [["pytest"]]
 
 [env.lint]
-description = "Run the linter"
+description = "Run the linter and the formatter check"
 skip_install = true
-deps = ["ruff>=0.15.0"]
-commands = [["ruff", "check", "."]]
+# Pinned, like ty below. Ruff's formatter changes between releases (0.16
+# started formatting Python blocks inside Markdown), so a floating version
+# means CI, tox and the pre-commit hook can disagree about the same file.
+deps = ["ruff==0.16.5"]
+commands = [["ruff", "check", "."], ["ruff", "format", "--check", "."]]
 
 [env.typecheck]
 description = "Run the type checker"

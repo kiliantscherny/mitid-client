@@ -35,7 +35,9 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.13"
-      - run: uvx ruff check
+      # Pinned to match tox.toml and prek.toml, so all three agree.
+      - run: uvx ruff@0.16.5 check
+      - run: uvx ruff@0.16.5 format --check
 
   typecheck:
     runs-on: ubuntu-latest

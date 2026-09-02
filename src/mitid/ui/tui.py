@@ -185,8 +185,13 @@ class MitIDLoginScreen(Screen):
         yield Footer()
 
     def on_mount(self) -> None:
-        for hidden in ("#mitid-qr", "#mitid-otp", "#mitid-prompt", "#mitid-choices",
-                       "#mitid-error"):
+        for hidden in (
+            "#mitid-qr",
+            "#mitid-otp",
+            "#mitid-prompt",
+            "#mitid-choices",
+            "#mitid-error",
+        ):
             self.query_one(hidden).display = False
         if not self._service:
             self.query_one("#mitid-service").display = False
@@ -283,8 +288,9 @@ class MitIDLoginScreen(Screen):
             # here because the screen is already on its way out.
             return max(self._choice, 0)
 
-        user_id = self._user_id or ask("Your MitID user ID (not your CPR number):",
-                                       "MitID user ID")
+        user_id = self._user_id or ask(
+            "Your MitID user ID (not your CPR number):", "MitID user ID"
+        )
         if not user_id or worker.is_cancelled:
             return
 
@@ -304,8 +310,10 @@ class MitIDLoginScreen(Screen):
                 show("#mitid-loading", False)
                 call(self.query_one("#mitid-error", Label).update, str(error))
                 show("#mitid-error")
-                call(self.query_one("#mitid-status", Label).update,
-                     "Press escape to go back, or try again.")
+                call(
+                    self.query_one("#mitid-status", Label).update,
+                    "Press escape to go back, or try again.",
+                )
             return
 
         if not worker.is_cancelled:

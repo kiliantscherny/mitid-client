@@ -27,10 +27,11 @@ what CI would have told you a few minutes later.
 ## Running the checks
 
 ```sh
-uv run tox          # tests on 3.10-3.14, plus lint and types
-uv run pytest       # just the tests, on the local interpreter
-uvx ruff check      # lint
-uvx ty@0.0.37 check # types
+uv run tox           # tests on 3.10-3.14, plus lint, format and types
+uv run pytest        # just the tests, on the local interpreter
+uvx ruff@0.16.5 check   # lint
+uvx ruff@0.16.5 format  # format
+uvx ty@0.0.37 check     # types
 ```
 
 `.python-version` pins local development to **3.10**, the oldest version the
@@ -61,13 +62,15 @@ tests/                 everything that can be checked without a phone
 > and are kept deliberately close to it, so that upstream fixes can be dropped
 > straight in when MitID changes the protocol.
 >
-> They are linted and type checked like everything else, and every change made
-> to them is listed at the top of each file. Line length is the one rule they
-> are exempt from, because rewrapping protocol code makes future diffs against
-> upstream unreadable and buys nothing.
+> They are formatted, linted and type checked like everything else, and every
+> change made to them is listed at the top of each file. There is one `noqa`
+> between them, on the SRP group modulus, which is a 942-digit integer literal
+> that Python offers no way to split.
 >
-> Please keep them recognisable: no reformatting, no refactoring to house
-> style. A behavioural change there is worth raising upstream too.
+> Because they have been reformatted, a diff against upstream is no longer
+> readable directly. When MitID changes the protocol, diff upstream against
+> upstream and apply the change here by hand. Behavioural changes are worth
+> raising upstream too.
 
 ## Adding a broker
 

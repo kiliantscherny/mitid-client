@@ -13,6 +13,9 @@ The protocol itself is untouched. What changed:
     than building one in the signature and sharing it between all of them
   - the two places that stop the QR thread also check the stop event, which
     was always set whenever the thread existed but did not say so
+  - formatted and linted to this project's rules, which reflowed most of the
+    file. No statement changed meaning: long messages are split with implicit
+    concatenation, which produces the same strings
 
 Nothing in here is tinglysning-specific: the core client is the same wherever
 MitID is used, and every broker - NemLog-in, Signicat, Nets - hands the browser
@@ -34,6 +37,7 @@ from mitid.srp import CustomSRP, bytes_to_hex, hex_to_bytes, pad
 
 logger = logging.getLogger(__name__)
 
+
 class BrowserClient:
     def __init__(
         self,
@@ -49,17 +53,27 @@ class BrowserClient:
         # builds one session at import time and shares it between every client
         # made without an explicit one. Every caller here passes a session, so
         # this only ever mattered latently, but it is still wrong.
-        self.session = requests_session if requests_session is not None else requests.Session()
+        self.session = (
+            requests_session if requests_session is not None else requests.Session()
+        )
         self.on_qr_display = on_qr_display
         self.on_status = on_status or (lambda message: logger.info(message))
-        self.on_otp = on_otp or (lambda code: logger.info("Type this code in the app: %s", code))
+        self.on_otp = on_otp or (
+            lambda code: logger.info("Type this code in the app: %s", code)
+        )
 
         self.client_hash = client_hash
         self.authentication_session_id = authentication_session_id
 
-        r = self.session.get(f"https://www.mitid.dk/mitid-core-client-backend/v1/authentication-sessions/{authentication_session_id}")
+        r = self.session.get(
+            f"https://www.mitid.dk/mitid-core-client-backend/v1/authentication-sessions/{authentication_session_id}"
+        )
         if r.status_code != 200:
-            logger.error("Failed to get authentication session (%s), status code %s", authentication_session_id, r.status_code)
+            logger.error(
+                "Failed to get authentication session (%s), status code %s",
+                authentication_session_id,
+                r.status_code,
+            )
             raise Exception(r.content)
 
         r = r.json()
@@ -70,12 +84,17 @@ class BrowserClient:
         self.reference_text_body = r["referenceTextBody"]
         self.on_status(f"MitID login requested by {self.service_provider_name}")
         if self.reference_text_header or self.reference_text_body:
-            self.on_status(f"{self.reference_text_header}: {self.reference_text_body}".strip(": "))
+            self.on_status(
+                f"{self.reference_text_header}: {self.reference_text_body}".strip(": ")
+            )
 
     def __display_qr_ascii(self, stop_event):
         def render_qr(qr):
             matrix = qr.get_matrix()
-            return "\n".join("".join("  " if cell else "\u2588\u2588" for cell in row) for row in matrix)
+            return "\n".join(
+                "".join("  " if cell else "\u2588\u2588" for cell in row)
+                for row in matrix
+            )
 
         frame = True
         while not stop_event.is_set():
@@ -118,76 +137,154 @@ class BrowserClient:
 
     def identify_as_user_and_get_available_authenticators(self, user_id):
         self.user_id = user_id
-        r = self.session.put(f"https://www.mitid.dk/mitid-core-client-backend/v1/authentication-sessions/{self.authentication_session_id}", json={"identityClaim": user_id})
+        r = self.session.put(
+            f"https://www.mitid.dk/mitid-core-client-backend/v1/authentication-sessions/{self.authentication_session_id}",
+            json={"identityClaim": user_id},
+        )
 
         if r.status_code != 200:
-            logger.error("Received status code (%s) while attempting to identify as user (%s)", r.status_code, user_id)
-            if r.status_code == 400 and r.json()["errorCode"] == "control.identity_not_found":
+            logger.error(
+                "Received status code (%s) while attempting to identify as user (%s)",
+                r.status_code,
+                user_id,
+            )
+            if (
+                r.status_code == 400
+                and r.json()["errorCode"] == "control.identity_not_found"
+            ):
                 logger.error("User '%s' does not exist.", user_id)
                 raise Exception(r.content)
 
-            if r.status_code == 400 and r.json()["errorCode"] == "control.authentication_session_not_found":
+            if (
+                r.status_code == 400
+                and r.json()["errorCode"] == "control.authentication_session_not_found"
+            ):
                 logger.error("Authentication session not found")
                 raise Exception(r.content)
 
             raise Exception(r.content)
 
-        r = self.session.post(f"https://www.mitid.dk/mitid-core-client-backend/v2/authentication-sessions/{self.authentication_session_id}/next", json={"combinationId": ""})
+        r = self.session.post(
+            f"https://www.mitid.dk/mitid-core-client-backend/v2/authentication-sessions/{self.authentication_session_id}/next",
+            json={"combinationId": ""},
+        )
 
         if r.status_code != 200:
-            logger.error("Received status code (%s) while attempting to get authenticators for user (%s)", r.status_code, user_id)
+            logger.error(
+                "Received status code (%s) while attempting to get "
+                "authenticators for user (%s)",
+                r.status_code,
+                user_id,
+            )
             raise Exception(r.content)
 
         r = r.json()
-        if r["errors"] and len(r["errors"]) > 0 and r["errors"][0]["errorCode"] == "control.authenticator_cannot_be_started":
+        if (
+            r["errors"]
+            and len(r["errors"]) > 0
+            and r["errors"][0]["errorCode"] == "control.authenticator_cannot_be_started"
+        ):
             error_text = r["errors"][0]["userMessage"]["text"]["text"]
-            logger.error("Could not get authenticators, got the following error text: %s", error_text)
+            logger.error(
+                "Could not get authenticators, got the following error text: %s",
+                error_text,
+            )
             raise Exception(r)
 
         self.current_authenticator_type = r["nextAuthenticator"]["authenticatorType"]
-        self.current_authenticator_session_flow_key = r["nextAuthenticator"]["authenticatorSessionFlowKey"]
+        self.current_authenticator_session_flow_key = r["nextAuthenticator"][
+            "authenticatorSessionFlowKey"
+        ]
         self.current_authenticator_eafe_hash = r["nextAuthenticator"]["eafeHash"]
-        self.current_authenticator_session_id = r["nextAuthenticator"]["authenticatorSessionId"]
+        self.current_authenticator_session_id = r["nextAuthenticator"][
+            "authenticatorSessionId"
+        ]
 
         available_combinations = r["combinations"]
         available_authenticators = {}
         for available_combination in available_combinations:
-            available_authenticators[self.__convert_combination_id_to_human_authenticator_name(available_combination["id"])] = available_combination["combinationItems"][0]["name"]
+            available_authenticators[
+                self.__convert_combination_id_to_human_authenticator_name(
+                    available_combination["id"]
+                )
+            ] = available_combination["combinationItems"][0]["name"]
 
         return available_authenticators
 
     def __create_flow_value_proof(self):
-        hashed_broker_security_context = hashlib.sha256(self.broker_security_context.encode("utf8")).hexdigest()
-        base64_reference_text_header = base64.b64encode(self.reference_text_header.encode('utf8')).decode("ascii")
-        base64_reference_text_body = base64.b64encode(self.reference_text_body.encode('utf8')).decode("ascii")
-        base64_service_provider_name = base64.b64encode(self.service_provider_name.encode('utf8')).decode("ascii")
-        return f"{self.current_authenticator_session_id},{self.current_authenticator_session_flow_key},{self.client_hash},{self.current_authenticator_eafe_hash},{hashed_broker_security_context},{base64_reference_text_header},{base64_reference_text_body},{base64_service_provider_name}".encode()
+        hashed_broker_security_context = hashlib.sha256(
+            self.broker_security_context.encode("utf8")
+        ).hexdigest()
+        base64_reference_text_header = base64.b64encode(
+            self.reference_text_header.encode("utf8")
+        ).decode("ascii")
+        base64_reference_text_body = base64.b64encode(
+            self.reference_text_body.encode("utf8")
+        ).decode("ascii")
+        base64_service_provider_name = base64.b64encode(
+            self.service_provider_name.encode("utf8")
+        ).decode("ascii")
+        return (
+            f"{self.current_authenticator_session_id},"
+            f"{self.current_authenticator_session_flow_key},"
+            f"{self.client_hash},"
+            f"{self.current_authenticator_eafe_hash},"
+            f"{hashed_broker_security_context},"
+            f"{base64_reference_text_header},"
+            f"{base64_reference_text_body},"
+            f"{base64_service_provider_name}"
+        ).encode()
 
     def __select_authenticator(self, authenticator_type: str):
         if authenticator_type == self.current_authenticator_type:
             return
 
-        combination_id = self.__convert_human_authenticator_name_to_combination_id(authenticator_type)
+        combination_id = self.__convert_human_authenticator_name_to_combination_id(
+            authenticator_type
+        )
 
-        r = self.session.post(f"https://www.mitid.dk/mitid-core-client-backend/v2/authentication-sessions/{self.authentication_session_id}/next", json={"combinationId": combination_id})
+        r = self.session.post(
+            f"https://www.mitid.dk/mitid-core-client-backend/v2/authentication-sessions/{self.authentication_session_id}/next",
+            json={"combinationId": combination_id},
+        )
 
         if r.status_code != 200:
-            logger.error("Received status code (%s) while attempting to get authenticators for user (%s)", r.status_code, self.user_id)
+            logger.error(
+                "Received status code (%s) while attempting to get "
+                "authenticators for user (%s)",
+                r.status_code,
+                self.user_id,
+            )
             raise Exception(r.content)
 
         r = r.json()
-        if r["errors"] and len(r["errors"]) > 0 and r["errors"][0]["errorCode"] == "control.authenticator_cannot_be_started":
+        if (
+            r["errors"]
+            and len(r["errors"]) > 0
+            and r["errors"][0]["errorCode"] == "control.authenticator_cannot_be_started"
+        ):
             error_text = r["errors"][0]["userMessage"]["text"]["text"]
-            logger.error("Could not get authenticators, got the following error text: %s", error_text)
+            logger.error(
+                "Could not get authenticators, got the following error text: %s",
+                error_text,
+            )
             raise Exception(r.content)
 
         self.current_authenticator_type = r["nextAuthenticator"]["authenticatorType"]
-        self.current_authenticator_session_flow_key = r["nextAuthenticator"]["authenticatorSessionFlowKey"]
+        self.current_authenticator_session_flow_key = r["nextAuthenticator"][
+            "authenticatorSessionFlowKey"
+        ]
         self.current_authenticator_eafe_hash = r["nextAuthenticator"]["eafeHash"]
-        self.current_authenticator_session_id = r["nextAuthenticator"]["authenticatorSessionId"]
+        self.current_authenticator_session_id = r["nextAuthenticator"][
+            "authenticatorSessionId"
+        ]
 
         if self.current_authenticator_type != authenticator_type:
-            raise Exception(f"Was not able to choose the desired authenticator ({authenticator_type}), instead we received ({self.current_authenticator_type})")
+            raise Exception(
+                f"Was not able to choose the desired authenticator "
+                f"({authenticator_type}), instead we received "
+                f"({self.current_authenticator_type})"
+            )
 
     def authenticate_with_token(self, token_digits: str):
         self.__select_authenticator("TOKEN")
@@ -197,20 +294,31 @@ class BrowserClient:
         A = SRP.SRPStage1()
         timer_1 = time.time() - timer_1
 
-        r = self.session.post(f"https://www.mitid.dk/mitid-code-token-auth/v1/authenticator-sessions/{self.current_authenticator_session_id}/codetoken-init", json={"randomA": {"value": A}})
+        r = self.session.post(
+            f"https://www.mitid.dk/mitid-code-token-auth/v1/authenticator-sessions/{self.current_authenticator_session_id}/codetoken-init",
+            json={"randomA": {"value": A}},
+        )
         if r.status_code != 200:
-            logger.error("Failed to init TOTP code protocol, status code %s", r.status_code)
+            logger.error(
+                "Failed to init TOTP code protocol, status code %s", r.status_code
+            )
             raise Exception(r.content)
 
         timer_2 = time.time()
         r = r.json()
-        # pbkdfSalt is not actually used even though we receive it, what the hell are they doing here?
+        # pbkdfSalt is not actually used even though we receive it, what the
+        # hell are they doing here?
         # This seems like schlock
-        #pbkdfSalt = r["pbkdf2Salt"]["value"]
+        # pbkdfSalt = r["pbkdf2Salt"]["value"]
         srpSalt = r["srpSalt"]["value"]
         randomB = r["randomB"]["value"]
 
-        m1 = SRP.SRPStage3(srpSalt, randomB, bytes_to_hex(self.current_authenticator_session_flow_key.encode("utf-8")), self.current_authenticator_session_id)
+        m1 = SRP.SRPStage3(
+            srpSalt,
+            randomB,
+            bytes_to_hex(self.current_authenticator_session_flow_key.encode("utf-8")),
+            self.current_authenticator_session_id,
+        )
 
         unhashed_flow_value_proof = self.__create_flow_value_proof()
         m = hashlib.sha256()
@@ -218,49 +326,89 @@ class BrowserClient:
         m.update(unhashed_flow_value_proof_key.encode("utf8"))
         flow_value_proof_key = m.digest()
 
-        flow_value_proof = hmac.new(flow_value_proof_key, unhashed_flow_value_proof, hashlib.sha256).hexdigest()
+        flow_value_proof = hmac.new(
+            flow_value_proof_key, unhashed_flow_value_proof, hashlib.sha256
+        ).hexdigest()
 
         timer_2 = time.time() - timer_2
         front_end_processing_time = int((timer_1 + timer_2) * 1000)
 
-        r = self.session.post(f"https://www.mitid.dk/mitid-code-token-auth/v1/authenticator-sessions/{self.current_authenticator_session_id}/codetoken-prove", json={"m1": {"value": m1}, "flowValueProof": {"value": flow_value_proof}, "frontEndProcessingTime": front_end_processing_time})
+        r = self.session.post(
+            f"https://www.mitid.dk/mitid-code-token-auth/v1/authenticator-sessions/{self.current_authenticator_session_id}/codetoken-prove",
+            json={
+                "m1": {"value": m1},
+                "flowValueProof": {"value": flow_value_proof},
+                "frontEndProcessingTime": front_end_processing_time,
+            },
+        )
         if r.status_code != 204:
             logger.error("Failed to submit TOTP code, status code %s", r.status_code)
             raise Exception(r.content)
 
-        r = self.session.post(f"https://www.mitid.dk/mitid-core-client-backend/v2/authentication-sessions/{self.authentication_session_id}/next", json={"combinationId": ""})
+        r = self.session.post(
+            f"https://www.mitid.dk/mitid-core-client-backend/v2/authentication-sessions/{self.authentication_session_id}/next",
+            json={"combinationId": ""},
+        )
         if r.status_code != 200:
             logger.error("Failed to prove TOTP code, status code %s", r.status_code)
             raise Exception(r.content)
 
-        if r.json()["errors"] and len(r.json()["errors"]) > 0 and r.json()["errors"][0]["errorCode"] == "TOTP_INVALID":
+        if (
+            r.json()["errors"]
+            and len(r.json()["errors"]) > 0
+            and r.json()["errors"][0]["errorCode"] == "TOTP_INVALID"
+        ):
             error_text = r.json()["errors"][0]["message"]
-            logger.error("Could not log in with the provided TOTP code, got the following message: %s", error_text)
+            logger.error(
+                "Could not log in with the provided TOTP code, got the "
+                "following message: %s",
+                error_text,
+            )
             raise Exception(r.content)
 
         r = r.json()
-        if "nextAuthenticator" not in r or "authenticatorType" not in r["nextAuthenticator"] or r["nextAuthenticator"]["authenticatorType"] != "PASSWORD":
-            logger.error("Ran into an unexpected situation, was expecting to be asked for password after TOTP but got the following response")
+        if (
+            "nextAuthenticator" not in r
+            or "authenticatorType" not in r["nextAuthenticator"]
+            or r["nextAuthenticator"]["authenticatorType"] != "PASSWORD"
+        ):
+            logger.error(
+                "Ran into an unexpected situation, was expecting to be asked "
+                "for password after TOTP but got the following response"
+            )
             raise Exception(r.content)
 
         self.current_authenticator_type = r["nextAuthenticator"]["authenticatorType"]
-        self.current_authenticator_session_flow_key = r["nextAuthenticator"]["authenticatorSessionFlowKey"]
+        self.current_authenticator_session_flow_key = r["nextAuthenticator"][
+            "authenticatorSessionFlowKey"
+        ]
         self.current_authenticator_eafe_hash = r["nextAuthenticator"]["eafeHash"]
-        self.current_authenticator_session_id = r["nextAuthenticator"]["authenticatorSessionId"]
+        self.current_authenticator_session_id = r["nextAuthenticator"][
+            "authenticatorSessionId"
+        ]
         self.on_status("Code token accepted - now checking your password")
 
     def authenticate_with_password(self, password: str):
         if self.current_authenticator_type != "PASSWORD":
-            raise Exception(f"You cannot authenticate with password before completing authentication with token code, the current authenticator type was ({self.current_authenticator_type})")
+            raise Exception(
+                f"You cannot authenticate with password before completing "
+                f"authentication with token code, the current authenticator "
+                f"type was ({self.current_authenticator_type})"
+            )
 
         timer_1 = time.time()
         SRP = CustomSRP()
         A = SRP.SRPStage1()
         timer_1 = time.time() - timer_1
 
-        r = self.session.post(f"https://www.mitid.dk/mitid-password-auth/v1/authenticator-sessions/{self.current_authenticator_session_id}/init", json={"randomA": {"value": A}})
+        r = self.session.post(
+            f"https://www.mitid.dk/mitid-password-auth/v1/authenticator-sessions/{self.current_authenticator_session_id}/init",
+            json={"randomA": {"value": A}},
+        )
         if r.status_code != 200:
-            logger.error("Failed to init password protocol, status code %s", r.status_code)
+            logger.error(
+                "Failed to init password protocol, status code %s", r.status_code
+            )
             raise Exception(r.content)
 
         timer_2 = time.time()
@@ -269,9 +417,13 @@ class BrowserClient:
         srpSalt = r["srpSalt"]["value"]
         randomB = r["randomB"]["value"]
 
-        password = hashlib.pbkdf2_hmac('sha256', password.encode("utf-8"), hex_to_bytes(pbkdfSalt), 20000, 32).hex()
+        password = hashlib.pbkdf2_hmac(
+            "sha256", password.encode("utf-8"), hex_to_bytes(pbkdfSalt), 20000, 32
+        ).hex()
 
-        m1 = SRP.SRPStage3(srpSalt, randomB, password, self.current_authenticator_session_id)
+        m1 = SRP.SRPStage3(
+            srpSalt, randomB, password, self.current_authenticator_session_id
+        )
 
         unhashed_flow_value_proof = self.__create_flow_value_proof()
         m = hashlib.sha256()
@@ -279,17 +431,29 @@ class BrowserClient:
         m.update(unhashed_flow_value_proof_key.encode("utf8"))
         flow_value_proof_key = m.digest()
 
-        flow_value_proof = hmac.new(flow_value_proof_key, unhashed_flow_value_proof, hashlib.sha256).hexdigest()
+        flow_value_proof = hmac.new(
+            flow_value_proof_key, unhashed_flow_value_proof, hashlib.sha256
+        ).hexdigest()
 
         timer_2 = time.time() - timer_2
         front_end_processing_time = int((timer_1 + timer_2) * 1000)
 
-        r = self.session.post(f"https://www.mitid.dk/mitid-password-auth/v1/authenticator-sessions/{self.current_authenticator_session_id}/password-prove", json={"m1": {"value": m1}, "flowValueProof": {"value": flow_value_proof}, "frontEndProcessingTime": front_end_processing_time})
+        r = self.session.post(
+            f"https://www.mitid.dk/mitid-password-auth/v1/authenticator-sessions/{self.current_authenticator_session_id}/password-prove",
+            json={
+                "m1": {"value": m1},
+                "flowValueProof": {"value": flow_value_proof},
+                "frontEndProcessingTime": front_end_processing_time,
+            },
+        )
         if r.status_code != 204:
             logger.error("Failed to submit password, status code %s", r.status_code)
             raise Exception(r.content)
 
-        r = self.session.post(f"https://www.mitid.dk/mitid-core-client-backend/v2/authentication-sessions/{self.authentication_session_id}/next", json={"combinationId":""})
+        r = self.session.post(
+            f"https://www.mitid.dk/mitid-core-client-backend/v2/authentication-sessions/{self.authentication_session_id}/next",
+            json={"combinationId": ""},
+        )
         if r.status_code != 200:
             logger.error("Failed to prove password, status code %s", r.status_code)
             raise Exception(r.content)
@@ -298,15 +462,27 @@ class BrowserClient:
         if r["errors"] and len(r["errors"]) > 0:
             if r["errors"][0]["errorCode"] == "PASSWORD_INVALID":
                 error_text = r["errors"][0]["message"]
-                logger.error("Could not log in with the provided password, got the following message: %s", error_text)
+                logger.error(
+                    "Could not log in with the provided password, got the "
+                    "following message: %s",
+                    error_text,
+                )
                 raise Exception(r)
             elif r["errors"][0]["errorCode"] == "core.psd2.error":
                 error_text = r["errors"][0]["message"]
-                logger.error("Could not log in due to an error, probably due to a wrong password provided. Got the following message: %s", error_text)
+                logger.error(
+                    "Could not log in due to an error, probably due to a wrong "
+                    "password provided. Got the following message: %s",
+                    error_text,
+                )
                 raise Exception(r)
             else:
                 error_text = r["errors"][0]["message"]
-                logger.error("Could not log in due to an unknown error, got the following message: %s", error_text)
+                logger.error(
+                    "Could not log in due to an unknown error, got the "
+                    "following message: %s",
+                    error_text,
+                )
                 raise Exception(r)
 
         self.finalization_authentication_session_id = r["nextSessionId"]
@@ -315,14 +491,23 @@ class BrowserClient:
     def authenticate_with_app(self):
         self.__select_authenticator("APP")
 
-        r = self.session.post(f"https://www.mitid.dk/mitid-code-app-auth/v1/authenticator-sessions/web/{self.current_authenticator_session_id}/init-auth", json={})
+        r = self.session.post(
+            f"https://www.mitid.dk/mitid-code-app-auth/v1/authenticator-sessions/web/{self.current_authenticator_session_id}/init-auth",
+            json={},
+        )
         if r.status_code != 200:
             logger.error("Failed to request app login, status code %s", r.status_code)
             raise Exception(r.content)
 
         r = r.json()
-        if "errorCode" in r and r["errorCode"] == "auth.codeapp.authentication.parallel_sessions_detected":
-            logger.error("Parallel app sessions detected, only a single app login session can be happening at any one time")
+        if (
+            "errorCode" in r
+            and r["errorCode"] == "auth.codeapp.authentication.parallel_sessions_detected"
+        ):
+            logger.error(
+                "Parallel app sessions detected, only a single app login "
+                "session can be happening at any one time"
+            )
             raise Exception(r)
 
         poll_url = r["pollUrl"]
@@ -352,25 +537,31 @@ class BrowserClient:
                     "v": 1,
                     "p": 1,
                     "t": 2,
-                    "h": r.json()["channelBindingValue"][:int(len(r.json()["channelBindingValue"])/2)],
-                    "uc": r.json()["updateCount"]
+                    "h": r.json()["channelBindingValue"][
+                        : int(len(r.json()["channelBindingValue"]) / 2)
+                    ],
+                    "uc": r.json()["updateCount"],
                 }
                 qr1 = qrcode.QRCode(border=1)
-                qr1.add_data(json.dumps(qr_data, separators=(',', ':')))
+                qr1.add_data(json.dumps(qr_data, separators=(",", ":")))
                 qr1.make()
 
                 qr_data["p"] = 2
-                qr_data["h"] = r.json()["channelBindingValue"][int(len(r.json()["channelBindingValue"])/2):]
+                qr_data["h"] = r.json()["channelBindingValue"][
+                    int(len(r.json()["channelBindingValue"]) / 2) :
+                ]
 
                 qr2 = qrcode.QRCode(border=1)
-                qr2.add_data(json.dumps(qr_data, separators=(',', ':')))
+                qr2.add_data(json.dumps(qr_data, separators=(",", ":")))
                 qr2.make()
 
                 self.__set_qr_codes(qr1, qr2)
 
                 if qr_stop_event is None:
                     qr_stop_event = threading.Event()
-                    qr_display_thread = threading.Thread(target=self.__display_qr_ascii, args=[qr_stop_event])
+                    qr_display_thread = threading.Thread(
+                        target=self.__display_qr_ascii, args=[qr_stop_event]
+                    )
                     qr_display_thread.start()
 
                 continue
@@ -389,7 +580,11 @@ class BrowserClient:
             # `== True` rather than a truth check, deliberately: this is a field
             # from someone else's JSON, and a truthy string or 1 would pass a
             # truth check while not being the confirmation we are waiting for.
-            if not (r.status_code == 200 and r.json()["status"] == "OK" and r.json()["confirmation"] == True):  # noqa: E712
+            if not (
+                r.status_code == 200
+                and r.json()["status"] == "OK"
+                and r.json()["confirmation"] == True  # noqa: E712
+            ):
                 # The event and the thread are created together above, so one
                 # implies the other. Saying so keeps the invariant visible to a
                 # reader and to a type checker, instead of only to whoever
@@ -412,7 +607,10 @@ class BrowserClient:
         A = SRP.SRPStage1()
         timer_1 = time.time() - timer_1
 
-        r = self.session.post(f"https://www.mitid.dk/mitid-code-app-auth/v1/authenticator-sessions/web/{self.current_authenticator_session_id}/init", json={"randomA": {"value": A}})
+        r = self.session.post(
+            f"https://www.mitid.dk/mitid-code-app-auth/v1/authenticator-sessions/web/{self.current_authenticator_session_id}/init",
+            json={"randomA": {"value": A}},
+        )
         if r.status_code != 200:
             logger.error("Failed to init app protocol, status code %s", r.status_code)
             raise Exception(r.content)
@@ -422,10 +620,15 @@ class BrowserClient:
         randomB = r.json()["randomB"]["value"]
 
         m = hashlib.sha256()
-        m.update(base64.b64decode(response) + self.current_authenticator_session_flow_key.encode("utf8"))
+        m.update(
+            base64.b64decode(response)
+            + self.current_authenticator_session_flow_key.encode("utf8")
+        )
         password = m.hexdigest()
 
-        m1 = SRP.SRPStage3(srpSalt, randomB, password, self.current_authenticator_session_id)
+        m1 = SRP.SRPStage3(
+            srpSalt, randomB, password, self.current_authenticator_session_id
+        )
 
         unhashed_flow_value_proof = self.__create_flow_value_proof()
         m = hashlib.sha256()
@@ -433,30 +636,50 @@ class BrowserClient:
         m.update(unhashed_flow_value_proof_key.encode("utf8"))
         flow_value_proof_key = m.digest()
 
-        flow_value_proof = hmac.new(flow_value_proof_key, unhashed_flow_value_proof, hashlib.sha256).hexdigest()
+        flow_value_proof = hmac.new(
+            flow_value_proof_key, unhashed_flow_value_proof, hashlib.sha256
+        ).hexdigest()
 
         timer_2 = time.time() - timer_2
 
-        r = self.session.post(f"https://www.mitid.dk/mitid-code-app-auth/v1/authenticator-sessions/web/{self.current_authenticator_session_id}/prove", json={"m1": {"value": m1}, "flowValueProof": {"value": flow_value_proof}})
+        r = self.session.post(
+            f"https://www.mitid.dk/mitid-code-app-auth/v1/authenticator-sessions/web/{self.current_authenticator_session_id}/prove",
+            json={"m1": {"value": m1}, "flowValueProof": {"value": flow_value_proof}},
+        )
         if r.status_code != 200:
-            logger.error("Failed to submit app response proof, status code %s", r.status_code)
+            logger.error(
+                "Failed to submit app response proof, status code %s", r.status_code
+            )
             raise Exception(r.content)
 
         timer_3 = time.time()
         m2 = r.json()["m2"]["value"]
         if not SRP.SRPStage5(m2):
             raise Exception("m2 could not be validated during proving of app response")
-        auth_enc = base64.b64encode(SRP.AuthEnc(base64.b64decode(pad(response_signature)))).decode("ascii")
+        auth_enc = base64.b64encode(
+            SRP.AuthEnc(base64.b64decode(pad(response_signature)))
+        ).decode("ascii")
         timer_3 = time.time() - timer_3
 
         front_end_processing_time = int((timer_1 + timer_2 + timer_3) * 1000)
 
-        r = self.session.post(f"https://www.mitid.dk/mitid-code-app-auth/v1/authenticator-sessions/web/{self.current_authenticator_session_id}/verify", json={"encAuth": auth_enc, "frontEndProcessingTime": front_end_processing_time})
+        r = self.session.post(
+            f"https://www.mitid.dk/mitid-code-app-auth/v1/authenticator-sessions/web/{self.current_authenticator_session_id}/verify",
+            json={
+                "encAuth": auth_enc,
+                "frontEndProcessingTime": front_end_processing_time,
+            },
+        )
         if r.status_code != 204:
-            logger.error("Failed to verify app response signature, status code %s", r.status_code)
+            logger.error(
+                "Failed to verify app response signature, status code %s", r.status_code
+            )
             raise Exception(r.content)
 
-        r = self.session.post(f"https://www.mitid.dk/mitid-core-client-backend/v2/authentication-sessions/{self.authentication_session_id}/next", json={"combinationId":""})
+        r = self.session.post(
+            f"https://www.mitid.dk/mitid-core-client-backend/v2/authentication-sessions/{self.authentication_session_id}/next",
+            json={"combinationId": ""},
+        )
         if r.status_code != 200:
             logger.error("Failed to prove app login, status code %s", r.status_code)
             raise Exception(r.content)
@@ -471,11 +694,18 @@ class BrowserClient:
 
     def finalize_authentication_and_get_authorization_code(self):
         if not self.finalization_authentication_session_id:
-            raise Exception("No finalization session ID set, make sure you have completed an authentication flow.")
+            raise Exception(
+                "No finalization session ID set, make sure you have completed "
+                "an authentication flow."
+            )
 
-        r = self.session.put(f"https://www.mitid.dk/mitid-core-client-backend/v1/authentication-sessions/{self.finalization_authentication_session_id}/finalization")
+        r = self.session.put(
+            f"https://www.mitid.dk/mitid-core-client-backend/v1/authentication-sessions/{self.finalization_authentication_session_id}/finalization"
+        )
         if r.status_code != 200:
-            logger.error("Failed to retrieve authorization code, status code %s", r.status_code)
+            logger.error(
+                "Failed to retrieve authorization code, status code %s", r.status_code
+            )
             raise Exception(r.content)
 
         return r.json()["authorizationCode"]

@@ -57,11 +57,13 @@ from mitid.ui.console import LoginConsole
 
 screen = LoginConsole()
 final = nemlogin.log_in(
-    session, START_URL, user_id,
-    on_status=screen.status,     # progress, and which service is asking
-    on_qr=screen.qr,             # a QR matrix, redrawn in place each second
-    on_otp=screen.otp,           # a code to type into the app
-    ask_token_code=screen.ask,   # only with method=mitid.TOKEN
+    session,
+    START_URL,
+    user_id,
+    on_status=screen.status,  # progress, and which service is asking
+    on_qr=screen.qr,  # a QR matrix, redrawn in place each second
+    on_otp=screen.otp,  # a code to type into the app
+    ask_token_code=screen.ask,  # only with method=mitid.TOKEN
     choose_identity=screen.choose,  # when one MitID unlocks several identities
 )
 ```
@@ -92,11 +94,12 @@ produces is a set of cookies, and `CookieStore` keeps those between runs:
 ```python
 from mitid.store import CookieStore
 
-store = CookieStore("yourapp", "service-session.json",
-                    session_factory=nemlogin.new_session)
+store = CookieStore(
+    "yourapp", "service-session.json", session_factory=nemlogin.new_session
+)
 store.save(session, user_id=user_id)
 
-restored = store.restore()          # (session, saved) or None
+restored = store.restore()  # (session, saved) or None
 if restored:
     session, saved = restored
     idle = store.idle_for(saved["saved_at"])

@@ -30,6 +30,27 @@ def _session_with(**cookies) -> requests.Session:
     return session
 
 
+class _WrappedCookies:
+    """A cookie container shaped the way curl_cffi shapes one.
+
+    curl_cffi wraps a real cookiejar and iterates the *names* in it, so a
+    caller reading `.name` off what iteration yields gets a string. Only the
+    two things the store touches are modelled here, which is the whole point:
+    the store should not need curl_cffi installed to be correct about it.
+    """
+
+    def __init__(self, jar) -> None:
+        self.jar = jar
+
+    def __iter__(self):
+        return iter(cookie.name for cookie in self.jar)
+
+
+class _WrappedSession:
+    def __init__(self, session) -> None:
+        self.cookies = _WrappedCookies(session.cookies)
+
+
 def test_path_follows_xdg(store, tmp_path):
     assert store.path == tmp_path / "testapp" / "service-session.json"
 
@@ -54,6 +75,29 @@ def test_the_file_is_readable_by_nobody_else(store):
     path.chmod(0o644)
     store.save(_session_with(JSESSIONID="abc"))
     assert stat.S_IMODE(path.stat().st_mode) == 0o600
+
+
+def test_a_session_that_hides_its_jar_is_saved_in_full(store):
+    """A curl_cffi-shaped session round-trips with its cookies intact.
+
+    Reaching for curl_cffi is what a caller does when the service fingerprints
+    the TLS handshake, which is exactly the sort of service that makes people
+    log in with MitID. Iterating its cookies gives names, not cookies, so the
+    store asks for the jar underneath.
+    """
+    wrapped = _WrappedSession(_session_with(JSESSIONID="abc", other="def"))
+    store.save(wrapped, user_id="SomeUser")
+
+    restored = store.restore()
+    assert restored is not None
+    session, saved = restored
+    assert dict(session.cookies) == {"JSESSIONID": "abc", "other": "def"}
+    assert saved["user_id"] == "SomeUser"
+    # The domain and path survive too - they are what a name and a value are
+    # not enough to reconstruct.
+    written = json.loads(store.path.read_text())["cookies"]
+    assert {c["domain"] for c in written} == {"example.dk"}
+    assert {c["path"] for c in written} == {"/"}
 
 
 def test_nothing_to_restore(store):

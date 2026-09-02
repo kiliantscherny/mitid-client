@@ -13,6 +13,10 @@ your application and, if it logs in to more than one place, after the service:
 
 The file lands in the XDG config directory, 0600, because a live login to a
 government register in someone's name is not an ordinary cache file.
+
+Any session will do, not only `requests`: a caller whose service fingerprints
+the TLS handshake will be holding a curl_cffi session instead, and both are
+read and rebuilt the same way here.
 """
 
 from __future__ import annotations
@@ -26,6 +30,18 @@ from pathlib import Path
 import requests
 
 REPORT_SUFFIX = "last-login-report.json"
+
+
+def _jar(session):
+    """The cookiejar to read cookies out of, whichever session this is.
+
+    requests keeps its cookies in a jar you can iterate for cookie objects.
+    curl_cffi, which callers reach for when a service fingerprints the TLS
+    handshake, wraps one in a `Cookies` object that iterates *names* instead -
+    so asking it for `.jar` is the difference between four fields per cookie
+    and a crash on the first `.name`.
+    """
+    return getattr(session.cookies, "jar", session.cookies)
 
 
 class CookieStore:
@@ -51,7 +67,7 @@ class CookieStore:
         root = os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config"
         return Path(root).expanduser() / self.app / self.name
 
-    def save(self, session: requests.Session, **extra) -> Path:
+    def save(self, session, **extra) -> Path:
         """Write the session's cookies out, readable by nobody else.
 
         Anything passed as `extra` is written alongside them and handed back by
@@ -73,7 +89,7 @@ class CookieStore:
                     "domain": cookie.domain,
                     "path": cookie.path,
                 }
-                for cookie in session.cookies
+                for cookie in _jar(session)
             ],
         }
         path.write_text(json.dumps(payload, indent=2), encoding="utf-8")

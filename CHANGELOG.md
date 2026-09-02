@@ -5,6 +5,17 @@ versions follow [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-09-02
+
+### Fixed
+
+- `CookieStore` could only read a `requests` session. A curl_cffi session -
+  what a caller reaches for when the service fingerprints the TLS handshake,
+  which describes a lot of what MitID fronts - wraps its cookiejar in an object
+  that iterates cookie *names*, so saving one raised `AttributeError` on the
+  first `.name`. The store now asks for the jar underneath, and reads all four
+  fields off either shape.
+
 ## [0.1.1] - 2026-09-02
 
 ### Fixed
@@ -42,6 +53,7 @@ something two applications depended on.
 - `mitid.ui.tui.MitIDLoginScreen`: the same login as a Textual screen, behind
   the `textual` extra.
 
-[Unreleased]: https://github.com/kiliantscherny/mitid-client/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/kiliantscherny/mitid-client/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/kiliantscherny/mitid-client/releases/tag/v0.1.2
 [0.1.1]: https://github.com/kiliantscherny/mitid-client/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/kiliantscherny/mitid-client/releases/tag/v0.1.0
